@@ -22,9 +22,14 @@ public class ThreadPool implements AutoCloseable {
     /**
      * The constructor just launches some amount of workers
      * @param threads number of threads
+     * @Throws IllegalStateException if number of threads is less than or equal to 0
      */
     @SuppressWarnings("ConstantConditions")
     public ThreadPool(int threads) {
+        if(threads <= 0) {
+            throw new IllegalArgumentException("number of threads must be greater than 0");
+        }
+
         workers = new ArrayList<>();
         tasks = new LinkedList<>();
         queueMutex = new Object();
@@ -52,6 +57,22 @@ public class ThreadPool implements AutoCloseable {
             }));
         }
         workers.forEach(Thread::start);
+    }
+
+    /**
+     * Add new work item to the pool
+     * @param task work item
+     * @Throws IllegalStateException if stopped ThreadPool
+     */
+    public void enqueue(Runnable task) {
+        synchronized (queueMutex) {
+            // don't allow enqueueing after stopping the pool
+            if (stop) {
+                throw new IllegalStateException("enqueue on stopped ThreadPool");
+            }
+            tasks.offer(task);
+            queueMutex.notify();
+        }
     }
 
     /**
